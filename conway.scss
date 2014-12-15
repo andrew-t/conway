@@ -8,6 +8,11 @@
 	> * {
 		position: absolute;
 		background: black;
+		&.hover {
+			outline: 2px dashed red;
+			background: transparent;
+			z-index: 1;
+		}
 	}
 }
 
@@ -15,6 +20,7 @@ $button-color: #c00;
 $button-border-color: darken($button-color, 50%);
 
 #controls {
+	z-index: 2;
 	position: fixed;
 	top: 25px;
 	left: 25px;

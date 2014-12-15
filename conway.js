@@ -63,14 +63,21 @@ document.addEventListener('DOMContentLoaded', function() {
 		});
 
 	var draw = (function(board) {
-		var m, cx, cy;
+		var m, cx, cy,
+			hoverElement = document.createElement('div'),
+			lastHoverCoords;
+		board.appendChild(hoverElement);
+		hoverElement.classList.add('hover');
 
 		board.addEventListener('click', function(e) {
-			var x = Math.floor((e.pageX - cx) / m),
-				y = Math.floor((e.pageY - cy) / m),
-				id = x + ',' + y;
+			var coords = reverseCoordinates(e),
+				id = coords[0] + ',' + coords[1];
 			cells[id] = !cells[id];
 			draw();
+		});
+
+		board.addEventListener('mousemove', function(e) {
+			positionElement(reverseCoordinates(e), hoverElement);
 		});
 
 		function draw() {
@@ -107,10 +114,14 @@ document.addEventListener('DOMContentLoaded', function() {
 				delete cells[id];
 				return undefined;
 			}
+			positionElement(coords, element);
+			return element;	
+		}
+
+		function positionElement(coords, element) {
 			element.style.top = m * coords[1] + cy + 'px';
 			element.style.left = m * coords[0] + cx + 'px';
 			element.style.width = element.style.height = m + 'px';
-			return element;	
 		}
 
 		function scale(top, right, bottom, left) {
@@ -120,11 +131,22 @@ document.addEventListener('DOMContentLoaded', function() {
 				mx = w / (right - left + 2),
 				my = h / (bottom - top + 2);
 			m = mx < my ? mx : my;
-			if (!m)
-				m = (w < h ? w : h) / 5;
-			m *= zoom;
-			cx = w / 2 - m * (right + left) / 2;
-			cy = h / 2 - m * (bottom + top) / 2;
+			if (m) {
+				m *= zoom;
+				cx = w / 2 - m * (right + left) / 2;
+				cy = h / 2 - m * (bottom + top) / 2;
+			} else {
+				m = (w < h ? w : h) * zoom / 5;
+				cx = w / 2 - m;
+				cy = h / 2 - m;
+			}
+		}
+
+		function reverseCoordinates(e) {
+			return [
+				Math.floor((e.pageX - cx) / m),
+				Math.floor((e.pageY - cy) / m)
+			];
 		}
 
 		return draw;
