@@ -1,0 +1,17 @@
+#life {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+}
+#life > * {
+	transition: all 300ms;
+	position: absolute;
+}
+#life > .dead {
+	background: white;
+}
+#life > .alive {
+	background: black;
+}
