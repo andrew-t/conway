@@ -2,7 +2,9 @@ document.addEventListener('DOMContentLoaded', function() {
 	var cells = {
 			'0,2': true,
 			'0,3': true,
-			'0,4': true
+			'0,4': true,
+			'1,4': true,
+			'2,3': true
 		};
 
 	setInterval(function() {
@@ -17,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
 			if (!++neighbours[id])
 				neighbours[id] = 1;
 		}
-		for (id in cells) {
+		for (id in cells) if (cells[id]) {
 			var coords = coordinates(id);
 			increment(coords[0] - 1, coords[1] - 1);
 			increment(coords[0],     coords[1] - 1);
@@ -39,7 +41,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 	var draw = (function() {
 		var board = document.getElementById('life'),
-			m, cx, cy;
+			m, cx, cy,
+			rot = {};
 
 		scale(-5, 5, 5, -5);
 
@@ -65,8 +68,18 @@ document.addEventListener('DOMContentLoaded', function() {
 				element.style.left = m * coords[0] + cx + 'px';
 				element.style.width = element.style.height = m + 'px';
 				element.className = cells[id] ? 'alive' : 'dead';
+				if (!cells[id]) {
+					rot[id]++;
+					if (!rot[id]) rot[id] = 1;
+					else if (rot[id] > 3) {
+						delete cells[id];
+						delete rot[id];
+						board.removeChild(element);
+					}
+				}
 			}
 			scale(top, right, bottom, left);
+			setTimeout(draw);
 		}
 
 		function scale(top, right, bottom, left) {
