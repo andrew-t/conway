@@ -5,21 +5,62 @@ document.addEventListener('DOMContentLoaded', function() {
 			'0,4': true,
 			'1,4': true,
 			'2,3': true
-		};
+		},
+		zoom = 1;
 
-	(function(play) {
-		var interval;
+	(function(play, delayInput) {
+		var interval, delay,
+			style;
+
+		for (var i = 0; i < document.styleSheets.length; ++i) {
+			var rules = document.styleSheets[i].cssRules;
+			for (var j = 0; j < rules.length; ++j) {
+				var rule = rules[j];
+				if (rule.selectorText == '#life > *')
+					style = rule.style;
+			}
+		}
+
 		play.addEventListener('click', function(e) {
 			if (interval) {
 				clearInterval(interval);
 				interval = undefined;
 				play.classList.add('paused');
 			} else {
-				interval = setInterval(iterate, 300);
+				interval = setInterval(iterate, delay);
 				play.classList.remove('paused');
 			};
 		});
-	})(document.getElementById('play'));
+		delayInput.addEventListener('input', updateDelay);
+		updateDelay();
+
+		function updateDelay() {
+			if (!delayInput.value) return;
+			delay = delayInput.value;
+			if (interval) {
+				clearInterval(interval);
+				interval = setInterval(iterate, delay);
+			}
+			style.transition = 'all ' + (delay * 0.75) + 'ms';
+		}
+	})(document.getElementById('play'),
+	   document.getElementById('delay'));
+
+	document.getElementById('zoom-in')
+		.addEventListener('click', function(e) {
+			zoom *= 1.25;
+			draw();
+		});
+	document.getElementById('zoom-out')
+		.addEventListener('click', function(e) {
+			zoom *= 0.8;
+			draw();
+		});
+	document.getElementById('zoom-reset')
+		.addEventListener('click', function(e) {
+			zoom = 1;
+			draw();
+		});
 
 	var draw = (function(board) {
 		var m, cx, cy;
@@ -79,14 +120,11 @@ document.addEventListener('DOMContentLoaded', function() {
 				mx = w / (right - left + 2),
 				my = h / (bottom - top + 2);
 			m = mx < my ? mx : my;
-			if (m) {
-				cx = w / 2 - m * (right + left) / 2;
-				cy = h / 2 - m * (bottom + top) / 2;
-			} else {
+			if (!m)
 				m = (w < h ? w : h) / 5;
-				cx = w / 2;
-				cy = h / 2;
-			}
+			m *= zoom;
+			cx = w / 2 - m * (right + left) / 2;
+			cy = h / 2 - m * (bottom + top) / 2;
 		}
 
 		return draw;

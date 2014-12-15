@@ -1,0 +1,64 @@
+#life {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	cursor: pointer;
+	> * {
+		position: absolute;
+		background: black;
+	}
+}
+
+$button-color: #c00;
+$button-border-color: darken($button-color, 50%);
+
+#controls {
+	position: fixed;
+	top: 25px;
+	left: 25px;
+	background: white;
+	opacity: 0.3;
+	box-shadow: 0 0 5px black;
+	transition: opacity 400ms;
+	padding: 10px;
+	&:hover {
+		opacity: 1;
+	}
+	> a {
+		cursor: pointer;
+		display: inline-block;
+		vertical-align: bottom;
+		height: 25px;
+		padding: 10px 25px;
+		background: $button-color;
+		border-radius: 5px;
+		border: 0 solid $button-border-color;
+		border-bottom: 5px solid $button-border-color;
+		transition: all 300ms linear;
+		color: white;
+		&#play {
+			&:not(.paused)::after {
+				content: '\25ae\25ae';
+			}
+			&.paused::after {
+				content: '\25b6';
+			}
+		}
+		&:active {
+			border-bottom: 0 solid $button-border-color;
+		}
+	}
+	> input, > label {
+		font-size: 25px;
+		vertical-align: middle;
+		padding: 10px;
+	}
+	> input {
+		width: 150px;
+	}
+	> label::after {
+		content: ':';
+	}
+}
