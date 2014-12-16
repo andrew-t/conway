@@ -1,16 +1,25 @@
 document.addEventListener('DOMContentLoaded', function() {
-	var cells = {
-			'0,2': true,
-			'0,3': true,
-			'0,4': true,
-			'1,4': true,
-			'2,3': true
-		},
+	var cells,
 		zoom = 1;
 
-	(function(play, delayInput) {
+	var player = (function(play, delayInput) {
 		var interval, delay,
-			style;
+			style,
+			self = {
+				play: function play() {
+					interval = setInterval(iterate, delay);
+					document.body.classList.remove('paused');
+					self.paused = false;
+				},
+				pause: function pause() {
+					clearInterval(interval);
+					self.paused = true;
+					interval = undefined;
+					document.body.classList.add('paused');
+					updateHash();
+				},
+				paused: true
+			};
 
 		for (var i = 0; i < document.styleSheets.length; ++i) {
 			var rules = document.styleSheets[i].cssRules;
@@ -21,15 +30,8 @@ document.addEventListener('DOMContentLoaded', function() {
 			}
 		}
 
-		play.addEventListener('click', function(e) {
-			if (interval) {
-				clearInterval(interval);
-				interval = undefined;
-				play.classList.add('paused');
-			} else {
-				interval = setInterval(iterate, delay);
-				play.classList.remove('paused');
-			};
+		play.addEventListener('click', function() {
+			self.paused ? self.play() : self.pause();
 		});
 		delayInput.addEventListener('input', updateDelay);
 		updateDelay();
@@ -43,6 +45,39 @@ document.addEventListener('DOMContentLoaded', function() {
 			}
 			style.transition = 'all ' + (delay * 0.75) + 'ms';
 		}
+		
+		function iterate() {
+			if (cells.length == 0) {
+				player.pause();
+				return;
+			}
+			var neighbours = {}, id;
+			function increment(x, y) {
+				var id = x + ',' + y;
+				if (!++neighbours[id])
+					neighbours[id] = 1;
+			}
+			for (id in cells) {
+				var coords = coordinates(id);
+				increment(coords[0] - 1, coords[1] - 1);
+				increment(coords[0],     coords[1] - 1);
+				increment(coords[0] + 1, coords[1] - 1);
+				increment(coords[0] - 1, coords[1]);
+				increment(coords[0] + 1, coords[1]);
+				increment(coords[0] - 1, coords[1] + 1);
+				increment(coords[0],     coords[1] + 1);
+				increment(coords[0] + 1, coords[1] + 1);
+			}
+			for (id in cells)
+				if ((neighbours[id] | 1) != 3)
+					cells[id] = false;
+			for (id in neighbours)
+				if (neighbours[id] == 3)
+					cells[id] = true;
+			draw();
+		}
+
+		return self;
 	})(document.getElementById('play'),
 	   document.getElementById('delay'));
 
@@ -65,19 +100,36 @@ document.addEventListener('DOMContentLoaded', function() {
 	var draw = (function(board) {
 		var m, cx, cy,
 			hoverElement = document.createElement('div'),
-			lastHoverCoords;
+			lastHoverCoords,
+			mouseDown = false,
+			paintMode;
 		board.appendChild(hoverElement);
 		hoverElement.classList.add('hover');
 
-		board.addEventListener('click', function(e) {
+		board.addEventListener('mousedown', function(e) {
+			if (!player.paused || mouseDown) return;
 			var coords = reverseCoordinates(e),
 				id = coords[0] + ',' + coords[1];
-			cells[id] = !cells[id];
-			draw();
+			cells[id] = paintMode = !cells[id];
+			draw.noScale();
+			mouseDown = true;
 		});
-
 		board.addEventListener('mousemove', function(e) {
-			positionElement(reverseCoordinates(e), hoverElement);
+			var coords = reverseCoordinates(e);
+			positionElement(coords, hoverElement);
+			if (mouseDown) {
+				var id = coords[0] + ',' + coords[1];
+				if (!cells[id] != !paintMode)
+					cells[id] = paintMode;
+				draw.noScale();
+			}
+		});
+		window.addEventListener('mouseup', function() {
+			if (mouseDown) {
+				mouseDown = false;
+				draw();
+				updateHash();
+			}
 		});
 
 		function draw() {
@@ -97,11 +149,13 @@ document.addEventListener('DOMContentLoaded', function() {
 			}
 			scale(top, right, bottom, left);
 
-			setTimeout(function() {
-				for (var id in cells)
-					drawCell(coordinates(id), id);
-			});
+			setTimeout(draw.noScale);
 		}
+
+		draw.noScale = function() {
+			for (var id in cells)
+				drawCell(coordinates(id), id);
+		};
 
 		function drawCell(coords, id) {
 			var element = document.getElementById(id);
@@ -152,34 +206,62 @@ document.addEventListener('DOMContentLoaded', function() {
 		return draw;
 	})(document.getElementById('life'));
 
-	draw();
-
-	function iterate() {
-		var neighbours = {}, id;
-		function increment(x, y) {
-			var id = x + ',' + y;
-			if (!++neighbours[id])
-				neighbours[id] = 1;
-		}
-		for (id in cells) {
+	var ignoreHashChange = false;
+	function updateHash() {
+		var hash = '';
+		var done = {};
+		for (id in cells) if (cells[id] && !done[id]) {
+			if (hash) hash += ';';
 			var coords = coordinates(id);
-			increment(coords[0] - 1, coords[1] - 1);
-			increment(coords[0],     coords[1] - 1);
-			increment(coords[0] + 1, coords[1] - 1);
-			increment(coords[0] - 1, coords[1]);
-			increment(coords[0] + 1, coords[1]);
-			increment(coords[0] - 1, coords[1] + 1);
-			increment(coords[0],     coords[1] + 1);
-			increment(coords[0] + 1, coords[1] + 1);
+			while (cells[(coords[0] - 1) + ',' + coords[1]])
+				coords[0]--;
+			id = coords[0] + ',' + coords[1];
+			hash += id;
+			done[id] = true;
+			var count = 1;
+			while (true) {
+				coords[0]++;
+				id = coords[0] + ',' + coords[1];
+				if (!cells[id]) break;
+				count++;
+				done[id] = true;
+			}
+			if (count > 1) hash += ',' + count;
 		}
-		for (id in cells)
-			if ((neighbours[id] | 1) != 3)
-				cells[id] = false;
-		for (id in neighbours)
-			if (neighbours[id] == 3)
-				cells[id] = true;
+		ignoreHashChange = true;
+		document.getElementById('permalink').href = '#' + hash;
+	}
+
+	function parseHash() {
+		if (ignoreHashChange) {
+			ignoreHashChange = false;
+			return;
+		}
+		if (!window.location.hash) return;
+		cells = {};
+		window.location.hash.substr(1).split(';').forEach(function(part) {
+			var parts = coordinates(part),
+				count = parts[2] || 1;
+			while (count--) {
+				cells[parts[0] + ',' + parts[1]] = true;
+				parts[0]++;
+			}
+		});
 		draw();
 	}
+	window.addEventListener('hashchange', parseHash);
+
+	if (window.location.hash)
+		parseHash();
+	else cells = {
+		'0,2': true,
+		'0,3': true,
+		'0,4': true,
+		'1,4': true,
+		'2,3': true
+	};
+
+	draw();
 
 	function coordinates(id) {
 		return id.split(',')
