@@ -2,12 +2,12 @@ document.addEventListener('DOMContentLoaded', function() {
 	var cells,
 		zoom = 1;
 
-	var player = (function(play, delayInput) {
+	var player = (function(play, delayInput, step) {
 		var interval, delay,
 			style,
 			self = {
 				play: function play() {
-					interval = setInterval(iterate, delay);
+					interval = setInterval(self.step, delay);
 					document.body.classList.remove('paused');
 					self.paused = false;
 				},
@@ -18,21 +18,53 @@ document.addEventListener('DOMContentLoaded', function() {
 					document.body.classList.add('paused');
 					updateHash();
 				},
+				step: function step() {
+					if (cells.length == 0) {
+						player.pause();
+						return;
+					}
+					var neighbours = {}, id;
+					function increment(x, y) {
+						var id = x + ',' + y;
+						if (!++neighbours[id])
+							neighbours[id] = 1;
+					}
+					for (id in cells) {
+						var coords = coordinates(id);
+						increment(coords[0] - 1, coords[1] - 1);
+						increment(coords[0],     coords[1] - 1);
+						increment(coords[0] + 1, coords[1] - 1);
+						increment(coords[0] - 1, coords[1]);
+						increment(coords[0] + 1, coords[1]);
+						increment(coords[0] - 1, coords[1] + 1);
+						increment(coords[0],     coords[1] + 1);
+						increment(coords[0] + 1, coords[1] + 1);
+					}
+					for (id in cells)
+						if ((neighbours[id] | 1) != 3)
+							cells[id] = false;
+					for (id in neighbours)
+						if (neighbours[id] == 3)
+							cells[id] = true;
+					draw();
+				},
 				paused: true
 			};
 
 		for (var i = 0; i < document.styleSheets.length; ++i) {
 			var rules = document.styleSheets[i].cssRules;
-			for (var j = 0; j < rules.length; ++j) {
+			if (rules) for (var j = 0; j < rules.length; ++j) {
 				var rule = rules[j];
 				if (rule.selectorText == '#life > *')
 					style = rule.style;
 			}
 		}
+		if (!style) console.log('ERROR: Stylesheet not found.');
 
 		play.addEventListener('click', function() {
 			self.paused ? self.play() : self.pause();
 		});
+		step.addEventListener('click', self.step);
 		delayInput.addEventListener('input', updateDelay);
 		updateDelay();
 
@@ -45,41 +77,11 @@ document.addEventListener('DOMContentLoaded', function() {
 			}
 			style.transition = 'all ' + (delay * 0.75) + 'ms';
 		}
-		
-		function iterate() {
-			if (cells.length == 0) {
-				player.pause();
-				return;
-			}
-			var neighbours = {}, id;
-			function increment(x, y) {
-				var id = x + ',' + y;
-				if (!++neighbours[id])
-					neighbours[id] = 1;
-			}
-			for (id in cells) {
-				var coords = coordinates(id);
-				increment(coords[0] - 1, coords[1] - 1);
-				increment(coords[0],     coords[1] - 1);
-				increment(coords[0] + 1, coords[1] - 1);
-				increment(coords[0] - 1, coords[1]);
-				increment(coords[0] + 1, coords[1]);
-				increment(coords[0] - 1, coords[1] + 1);
-				increment(coords[0],     coords[1] + 1);
-				increment(coords[0] + 1, coords[1] + 1);
-			}
-			for (id in cells)
-				if ((neighbours[id] | 1) != 3)
-					cells[id] = false;
-			for (id in neighbours)
-				if (neighbours[id] == 3)
-					cells[id] = true;
-			draw();
-		}
 
 		return self;
 	})(document.getElementById('play'),
-	   document.getElementById('delay'));
+	   document.getElementById('delay'),
+	   document.getElementById('step'));
 
 	document.getElementById('zoom-in')
 		.addEventListener('click', function(e) {
@@ -254,11 +256,11 @@ document.addEventListener('DOMContentLoaded', function() {
 	if (window.location.hash)
 		parseHash();
 	else cells = {
-		'0,2': true,
-		'0,3': true,
-		'0,4': true,
-		'1,4': true,
-		'2,3': true
+		'0,0': true,
+		'1,0': true,
+		'1,1': true,
+		'2,1': true,
+		'1,2': true
 	};
 
 	draw();
